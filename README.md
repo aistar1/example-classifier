@@ -26,3 +26,14 @@ python train.py --dataet gender --epochs 100 --batch-size 128 --height 256 --wid
 | net | female | male |
 | ------ | ------ | ------ |
 | resnet50 | 80.4 % | 87.6 % |
+
+<table border="0">
+<tr>
+    <td>
+    <img src="figure/female.jpg" width="100%" />
+    </td>
+    <td>
+    <img src="figure/male.jpg", width="100%" />
+    </td>
+</tr>
+</table>
