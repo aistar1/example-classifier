@@ -1,10 +1,13 @@
 # example-classifier
 
 ## Prepare dataset
+Train two class (female and  male)
 ```
 gender/
 ├── train
 │   ├── female
+│   │     ├── xxx.jpg
+│   │     └── xxx.jpg
 │   └── male
 └── val
     ├── female
