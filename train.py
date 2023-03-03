@@ -18,7 +18,6 @@ LOCAL_RANK = int(os.getenv('LOCAL_RANK', -1))
 print(LOCAL_RANK)
 WORLD_SIZE = int(os.getenv('WORLD_SIZE', 1))
 
-
 def parse_opt():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', type=str,
@@ -29,8 +28,9 @@ def parse_opt():
                         help='total batch size for all GPUs, -1 for autobatch')
     parser.add_argument('--height', type=int, default=256,
                         help='train, val image size (pixels)')
-    parser.add_argument('--width', type=int, default=64,
+    parser.add_argument('--width', type=int, default=128,
                         help='train, val image size (pixels)')
+    parser.add_argument('--freeze', action='store_true', help='Freeze layers: backbone')
     parser.add_argument('--workers', type=int, default=4,
                         help='max dataloader workers (per RANK in DDP mode)')
     return parser.parse_known_args()[0]
@@ -58,6 +58,15 @@ def main(opt):
     nc = len(classes)    
     model = resnet50(nc=nc)
     #model = Net()
+    
+    # Freeze
+    freeze = opt.freeze
+    if freeze:
+        for k, v in model.named_parameters():
+            if 'body' in k:
+                v.requires_grad = False
+            print(f'freezing {k}  {v.requires_grad} ')
+
     model.to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
@@ -82,9 +91,6 @@ def main(opt):
             tloss = (tloss * i + loss.item()) / (i + 1)  # update mean losses
             mem = '%.3gG' % (torch.cuda.memory_reserved() / 1E9 if torch.cuda.is_available() else 0)  # (GB)
             print( f"{f'{epoch + 1}/{opt.epochs}':>10}{mem:>10}{tloss:>12.3g}" + ' ' * 36)
-            
-
-
 
             # Test
             if i == len(pbar) - 1:  # last batch
@@ -108,14 +114,9 @@ def main(opt):
                 for classname, correct_count in correct_pred.items():
                     accuracy = 100 * float(correct_count) / total_pred[classname]
                     print(f'Accuracy for class: {classname:5s} is {accuracy:.1f} %')
-                
-
-
 
         torch.save(model.state_dict(), last)
-
     print('Finished Training')
-
 
 if __name__ == '__main__':
     opt = parse_opt()
