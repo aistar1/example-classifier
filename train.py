@@ -12,11 +12,13 @@ from utils.general import increment_path
 import torch
 import torch.optim as optim
 import torch.nn as nn
+from torch.optim import lr_scheduler
 
 # https://pytorch.org/docs/stable/elastic/run.html
 LOCAL_RANK = int(os.getenv('LOCAL_RANK', -1))
 print(LOCAL_RANK)
 WORLD_SIZE = int(os.getenv('WORLD_SIZE', 1))
+
 
 def parse_opt():
     parser = argparse.ArgumentParser()
@@ -24,7 +26,7 @@ def parse_opt():
                         default='gender', help='data path')
     parser.add_argument('--epochs', type=int, default=100,
                         help='total training epochs')
-    parser.add_argument('--batch-size', type=int, default=128,
+    parser.add_argument('--batch-size', type=int, default=72,
                         help='total batch size for all GPUs, -1 for autobatch')
     parser.add_argument('--height', type=int, default=256,
                         help='train, val image size (pixels)')
@@ -67,14 +69,26 @@ def main(opt):
                 v.requires_grad = False
             print(f'freezing {k}  {v.requires_grad} ')
 
+
+
     model.to(device)
     criterion = nn.CrossEntropyLoss()
+    # Optimizer
     optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-    
+    lrf = 0.001
+    lf = lambda x: (1 - x / opt.epochs) * (1.0 - lrf+ lrf ) # linear
+
+    # Scheduler
+    scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lf)  # plot_lr_scheduler(optimizer, scheduler, epochs)
+
 
     for epoch in range(opt.epochs):  # loop over the dataset multiple times
         tloss = 0.0 # train loss
         model.train()
+
+        #LOGGER.info(('\n' + '%11s' * 7) % ('Epoch', 'GPU_mem', 'box_loss', 'obj_loss', 'cls_loss', 'Instances', 'Size'))
+        print( f"{f'{epoch + 1}/{opt.epochs}':>10}{mem:>10}{tloss:>12.3g}{scheduler.get_last_lr():>10}" + ' ' * 36)
+
         #pbar = enumerate(train_loader)
         pbar = tqdm(enumerate(train_loader), total=len(train_loader))
         #for i, (images, labels) in enumerate(train_loader):
@@ -90,7 +104,8 @@ def main(opt):
             optimizer.step()
             tloss = (tloss * i + loss.item()) / (i + 1)  # update mean losses
             mem = '%.3gG' % (torch.cuda.memory_reserved() / 1E9 if torch.cuda.is_available() else 0)  # (GB)
-            print( f"{f'{epoch + 1}/{opt.epochs}':>10}{mem:>10}{tloss:>12.3g}" + ' ' * 36)
+            
+
 
             # Test
             if i == len(pbar) - 1:  # last batch
@@ -114,9 +129,11 @@ def main(opt):
                 for classname, correct_count in correct_pred.items():
                     accuracy = 100 * float(correct_count) / total_pred[classname]
                     print(f'Accuracy for class: {classname:5s} is {accuracy:.1f} %')
-
+        scheduler.step()
         torch.save(model.state_dict(), last)
+
     print('Finished Training')
+
 
 if __name__ == '__main__':
     opt = parse_opt()
