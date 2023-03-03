@@ -15,7 +15,7 @@ def parse_opt():
                         help='total batch size for all GPUs, -1 for autobatch')
     parser.add_argument('--height', type=int, default=256,
                         help='train, val image size (pixels)')
-    parser.add_argument('--width', type=int, default=64,
+    parser.add_argument('--width', type=int, default=128,
                         help='train, val image size (pixels)')
     parser.add_argument('--workers', type=int, default=4,
                         help='max dataloader workers (per RANK in DDP mode)')
