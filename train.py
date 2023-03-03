@@ -13,6 +13,7 @@ import torch
 import torch.optim as optim
 import torch.nn as nn
 from torch.optim import lr_scheduler
+from torchinfo import summary
 
 # https://pytorch.org/docs/stable/elastic/run.html
 LOCAL_RANK = int(os.getenv('LOCAL_RANK', -1))
@@ -69,9 +70,9 @@ def main(opt):
                 v.requires_grad = False
             print(f'freezing {k}  {v.requires_grad} ')
 
-
-
     model.to(device)
+    print(summary(model, (1, 3, 256, 128)))
+
     criterion = nn.CrossEntropyLoss()
     # Optimizer
     optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
@@ -81,13 +82,9 @@ def main(opt):
     # Scheduler
     scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lf)  # plot_lr_scheduler(optimizer, scheduler, epochs)
 
-
     for epoch in range(opt.epochs):  # loop over the dataset multiple times
         tloss = 0.0 # train loss
         model.train()
-
-        #LOGGER.info(('\n' + '%11s' * 7) % ('Epoch', 'GPU_mem', 'box_loss', 'obj_loss', 'cls_loss', 'Instances', 'Size'))
-        print( f"{f'{epoch + 1}/{opt.epochs}':>10}{mem:>10}{tloss:>12.3g}{scheduler.get_last_lr():>10}" + ' ' * 36)
 
         #pbar = enumerate(train_loader)
         pbar = tqdm(enumerate(train_loader), total=len(train_loader))
@@ -105,8 +102,6 @@ def main(opt):
             tloss = (tloss * i + loss.item()) / (i + 1)  # update mean losses
             mem = '%.3gG' % (torch.cuda.memory_reserved() / 1E9 if torch.cuda.is_available() else 0)  # (GB)
             
-
-
             # Test
             if i == len(pbar) - 1:  # last batch
                 # prepare to count predictions for each class
@@ -129,11 +124,11 @@ def main(opt):
                 for classname, correct_count in correct_pred.items():
                     accuracy = 100 * float(correct_count) / total_pred[classname]
                     print(f'Accuracy for class: {classname:5s} is {accuracy:.1f} %')
+        print(('\n' + '%11s' * 4) % ('Epoch', 'GPU_mem', 'total_loss', 'lr'))
+        print( f"{f'{epoch + 1}/{opt.epochs}':>10}{mem:>10}{tloss:>12.3g}  {scheduler.get_last_lr()}" + ' ' * 36)
         scheduler.step()
         torch.save(model.state_dict(), last)
-
     print('Finished Training')
-
 
 if __name__ == '__main__':
     opt = parse_opt()
