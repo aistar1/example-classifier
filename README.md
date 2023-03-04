@@ -25,7 +25,7 @@ python train.py --dataet gender --epochs 100 --batch-size 128 --height 256 --wid
 ## Val
 | net | female | male |
 | ------ | ------ | ------ |
-| resnet50 | 80.4 % | 87.6 % |
+| resnet50 | 87.2 % | 91 % |
 
 <table border="0">
 <tr>
