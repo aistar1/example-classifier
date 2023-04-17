@@ -1,7 +1,7 @@
 # example-classifier
 
 ## Prepare dataset
-Train two class (female and  male)
+Train two classes (female and  male)
 ```
 gender/
 ├── train
